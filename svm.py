@@ -90,11 +90,13 @@ def main():
                 m = svm_train(trn_y, trn_x, option)
                 p_label, p_acc, p_val = svm_predict(vld_y, vld_x, m)
                 
-                acc.append(p_acc)
-                
+                acc.append(p_acc[0])
+
             acc_arr = np.array(acc)
             mean_vec.append(np.mean(acc_arr))
             std_vec.append(np.std(acc_arr))
+
+            break
 
         print(mean_vec)
 
