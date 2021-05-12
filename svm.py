@@ -19,9 +19,7 @@ def get_trn_vld_data(lst, fold):
 
     return trn, vld
 
-def main():
-
-    y, x = svm_read_problem('satimage.scale.merged')
+def preprocess_data(x, y, method = "B"):
 
     ################ preprocess y #############################
     for i in range(len(y)):
@@ -32,24 +30,195 @@ def main():
 
     ################ row-wise data normalization #######################
 
-    for data in x:
-        a = []
+    # normalize method A
+    if method == "A":
+        for data in x:
+            a = []
 
-        for i in range(1,36):
-            try:
-                a.append(data[i])
-            except:
-                continue
+            for i in range(1,36):
+                try:
+                    a.append(data[i])
+                except:
+                    continue
+            
+            arr = np.asarray(a)
+            mean = np.mean(arr)
+            std = np.std(arr)
+
+            for key in range(1,36):
+                try:
+                    data[key] = (arr[key-1] - mean)/std
+                except:
+                    continue
+
+    # normalize method B
+    else:
+        for data in x:
+            a = 0
+
+            for i in range(1,36):
+                try:
+                    a += (data[i])**2
+                except:
+                    continue
+            
+            a = a**0.5
+
+            for key in range(1,36):
+                try:
+                    data[key] /= a
+                except:
+                    continue
+
+def train_for_each_dC_pair(cv_tenfold_x, cv_tenfold_y):
+    xcoordinate = [k for k in range(-10, 11)]
+    xsimp = [k for k in range(-10, -5)]
+
+    best_C = []
+    best_C_acc = []
+
+    for degree in range(1,5):
+        mean_vec = []
+        std_vec = []
+        for k in range(-10, 11):
+            C = 2**k
+            option = f'-t 1 -c {C} -d {degree} -h 0 -w1 16'
+            acc = []
+            for fold in range(10):
+
+                print(degree, k, fold)
+                trn_x, vld_x = get_trn_vld_data(cv_tenfold_x, fold)
+                trn_y, vld_y = get_trn_vld_data(cv_tenfold_y, fold)
+
+                m = svm_train(trn_y, trn_x, option)
+                p_label, p_acc, p_val = svm_predict(vld_y, vld_x, m)
+                
+                acc.append(p_acc[0])
+
+            acc_arr = np.array(acc)
+            mean_vec.append(np.mean(acc_arr))
+            std_vec.append(np.std(acc_arr))
+
+        title = f'degree: {degree} -w1 16'
+        plt.title(title)
+        plt.xlabel("k", fontsize=20)
+        plt.ylabel("acc", fontsize=20)
+        plt.errorbar(xcoordinate, mean_vec, yerr=std_vec,fmt='o',capthick=2)
+        plt.plot(xcoordinate, mean_vec)
+        plt.savefig(title, bbox_inches='tight')
         
-        arr = np.asarray(a)
-        mean = np.mean(arr)
-        std = np.std(arr)
+        #plt.clf()
 
-        for key in range(1,36):
-            try:
-                data[key] = (arr[key-1] - mean)/std
-            except:
-                continue
+        mean_arr = np.array(mean_vec)
+        best_C.append(np.argmax(mean_arr))
+        best_C_acc.append(np.max(mean_arr))
+
+    for i in range(4):
+        print(best_C[i], best_C_acc[i])
+
+    return best_C[np.argmax(np.array(best_C_acc))]
+
+def fix_C_plot(cv_tenfold_x, cv_tenfold_y, ks):
+    xcoordinate = [d for d in range(1, 5)]
+    tr_mean_vec = []
+    tr_std_vec = []
+    ts_mean_vec = []
+    ts_std_vec = []
+    nr_sv_mean = []
+
+    print('C* = ', 2**ks)
+    for degree in range(1,5):
+
+
+        C = 2 ** ks
+        option = f'-t 1 -c {C} -d {degree} -h 0 -w1 16'
+        tr_acc = []
+        ts_acc = []
+        nr_sv = []
+        for fold in range(10):
+
+            print(degree, fold)
+            trn_x, vld_x = get_trn_vld_data(cv_tenfold_x, fold)
+            trn_y, vld_y = get_trn_vld_data(cv_tenfold_y, fold)
+
+            m = svm_train(trn_y, trn_x, option)
+            p_label, p_acc, p_val = svm_predict(vld_y, vld_x, m)
+            t_label, t_acc, t_val = svm_predict(yt, xt, m)
+                
+            tr_acc.append(p_acc[0])
+            ts_acc.append(t_acc[0])
+            nr_sv.append(m.get_nr_sv())
+
+        tracc_arr = np.array(tr_acc)
+        tsacc_arr = np.array(ts_acc)
+        nrsv_arr = np.array(nr_sv)
+        tr_mean_vec.append(np.mean(tracc_arr))
+        tr_std_vec.append(np.std(tracc_arr))
+        ts_mean_vec.append(np.mean(tsacc_arr))
+        ts_std_vec.append(np.std(tsacc_arr))
+        nr_sv_mean.append(np.mean(nrsv_arr))
+
+    title = 'C* to degree acc on training & testing set: -w1 16'
+    plt.title(title)
+    plt.xlabel("degree", fontsize=20)
+    plt.ylabel("acc", fontsize=20)
+    plt.errorbar(xcoordinate, tr_mean_vec, yerr=tr_std_vec,fmt='o',capthick=2)
+    plt.plot(xcoordinate, tr_mean_vec)
+    plt.errorbar(xcoordinate, ts_mean_vec, yerr=ts_std_vec,fmt='o',capthick=2)
+    plt.plot(xcoordinate, ts_mean_vec)
+    plt.savefig(title, bbox_inches='tight')
+
+    plt.clf()
+
+    title = 'C* to degree # of SVs: -w1 16'
+    plt.title(title)
+    plt.xlabel("# of SVs", fontsize=20)
+    plt.ylabel("acc", fontsize=20)
+    plt.plot(xcoordinate, nr_sv_mean, '-o')
+    plt.savefig(title, bbox_inches='tight')
+
+def false_positive_error_plot(cv_tenfold_x, cv_tenfold_y):
+
+    for ck in range(1, 4):
+        w = 2**ck
+        for degree in range(1,5):
+            mean_vec = []
+            std_vec = []
+            for k in range(-10, 11):
+                C = 2**k
+                option = f'-t 1 -c {C} -d {degree} -h 0 -w1 {w}'
+                acc = []
+                for fold in range(10):
+
+                    print(degree, k, fold)
+                    trn_x, vld_x = get_trn_vld_data(cv_tenfold_x, fold)
+                    trn_y, vld_y = get_trn_vld_data(cv_tenfold_y, fold)
+
+                    m = svm_train(trn_y, trn_x, option)
+                    p_label, p_acc, p_val = svm_predict(vld_y, vld_x, m)
+                    
+                    acc.append(p_acc[0])
+
+                acc_arr = np.array(acc)
+                mean_vec.append(np.mean(acc_arr))
+                std_vec.append(np.std(acc_arr))
+
+            title = f'degree: {degree} -w1 {ck}'
+            plt.title(title)
+            plt.xlabel("k", fontsize=20)
+            plt.ylabel("acc", fontsize=20)
+            plt.errorbar(xcoordinate, mean_vec, yerr=std_vec,fmt='o',capthick=2)
+            plt.plot(xcoordinate, mean_vec)
+            plt.savefig(title, bbox_inches='tight')
+
+def main():
+
+    y, x = svm_read_problem('satimage.scale.merged')
+    yt, xt = svm_read_problem('satimage.scale.testing')
+
+    # preprocess training set & testing set
+    preprocess_data(x, y)
+    preprocess_data(xt, yt)
 
     ################# ten-fold cross validation ###########################
 
@@ -73,49 +242,23 @@ def main():
 
         count += 1
 
-    ################### training for each degree and C ##################
-    xcoordinate = [k for k in range(-10, 11)]
-    xsimp = [k for k in range(-10, -5)]
+    # training for each degree and C
+    ks = train_for_each_dC_pair(cv_tenfold_x, cv_tenfold_y)-10
 
-    best_C = []
-    best_C_acc = []
+    # fix C* and plot for every degree
+    fix_C_plot(cv_tenfold_x, cv_tenfold_y, ks)
 
-    for degree in range(1,5):
-        mean_vec = []
-        std_vec = []
-        for k in range(-10, 11):
-            C = 2**k
-            option = f'-t 0 -c {C} -d {degree}'
-            acc = []
-            for fold in range(10):
+    # penalize false positive error more
+    false_positive_error_plot(cv_tenfold_x, cv_tenfold_y)
 
-                print(degree, k, fold)
-                trn_x, vld_x = get_trn_vld_data(cv_tenfold_x, fold)
-                trn_y, vld_y = get_trn_vld_data(cv_tenfold_y, fold)
-
-                m = svm_train(trn_y, trn_x, option)
-                p_label, p_acc, p_val = svm_predict(vld_y, vld_x, m)
-                
-                acc.append(p_acc[0])
-
-            acc_arr = np.array(acc)
-            mean_vec.append(np.mean(acc_arr))
-            std_vec.append(np.std(acc_arr))
-
-        title = f'degree: {degree}'
-        plt.title(title)
-        plt.xlabel("k", fontsize=20)
-        plt.ylabel("acc", fontsize=20)
-        plt.errorbar(xcoordinate, mean_vec, yerr=std_vec,fmt='o',capthick=2)
-        plt.plot(xcoordinate, mean_vec)
-        plt.show()
-
-        mean_arr = np.array(mean_vec)
-        best_C.append(np.argmax(mean_arr))
-        best_C_acc.append(np.max(mean_arr))
-
-    for i in range(4):
-        print(best_C[i], best_C_acc[i])
+    
 
 
-main()
+#   mean_arr = np.array(mean_vec)
+#   best_C.append(np.argmax(mean_arr))
+#   best_C_acc.append(np.max(mean_arr))
+
+
+
+if __name__ == '__main__':
+    main()
