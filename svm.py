@@ -82,7 +82,7 @@ def train_for_each_dC_pair(cv_tenfold_x, cv_tenfold_y):
         std_vec = []
         for k in range(-10, 11):
             C = 2**k
-            option = f'-t 1 -c {C} -d {degree} -h 0 -w1 16'
+            option = f'-t 1 -c {C} -d {degree} -h 0'
             acc = []
             for fold in range(10):
 
@@ -99,7 +99,7 @@ def train_for_each_dC_pair(cv_tenfold_x, cv_tenfold_y):
             mean_vec.append(np.mean(acc_arr))
             std_vec.append(np.std(acc_arr))
 
-        title = f'degree: {degree} -w1 16'
+        title = f'degree: {degree}'
         plt.title(title)
         plt.xlabel("k", fontsize=20)
         plt.ylabel("acc", fontsize=20)
@@ -118,23 +118,24 @@ def train_for_each_dC_pair(cv_tenfold_x, cv_tenfold_y):
 
     return best_C[np.argmax(np.array(best_C_acc))]
 
-def fix_C_plot(cv_tenfold_x, cv_tenfold_y, ks):
+def fix_C_plot(cv_tenfold_x, cv_tenfold_y, xt, yt, ks):
     xcoordinate = [d for d in range(1, 5)]
     tr_mean_vec = []
     tr_std_vec = []
     ts_mean_vec = []
     ts_std_vec = []
     nr_sv_mean = []
-
+    nr_msv_mean = []
     print('C* = ', 2**ks)
     for degree in range(1,5):
 
 
         C = 2 ** ks
-        option = f'-t 1 -c {C} -d {degree} -h 0 -w1 16'
+        option = f'-t 1 -c {C} -d {degree} -h 0'
         tr_acc = []
         ts_acc = []
         nr_sv = []
+        nr_msv = []
         for fold in range(10):
 
             print(degree, fold)
@@ -148,17 +149,26 @@ def fix_C_plot(cv_tenfold_x, cv_tenfold_y, ks):
             tr_acc.append(p_acc[0])
             ts_acc.append(t_acc[0])
             nr_sv.append(m.get_nr_sv())
+            SV = m.get_sv_coef()
+            nBV = 0
+            for sv in SV:
+                if abs(sv[0]) == 1024:
+                    nBV += 1
+            nr_msv.append(m.get_nr_sv() - nBV)
+
 
         tracc_arr = np.array(tr_acc)
         tsacc_arr = np.array(ts_acc)
         nrsv_arr = np.array(nr_sv)
+        nrmsv_arr = np.array(nr_msv)
         tr_mean_vec.append(np.mean(tracc_arr))
         tr_std_vec.append(np.std(tracc_arr))
         ts_mean_vec.append(np.mean(tsacc_arr))
         ts_std_vec.append(np.std(tsacc_arr))
         nr_sv_mean.append(np.mean(nrsv_arr))
+        nr_msv_mean.append(np.mean(nrmsv_arr))
 
-    title = 'C* to degree acc on training & testing set: -w1 16'
+    title = 'C* to degree acc on training & testing set'
     plt.title(title)
     plt.xlabel("degree", fontsize=20)
     plt.ylabel("acc", fontsize=20)
@@ -170,18 +180,24 @@ def fix_C_plot(cv_tenfold_x, cv_tenfold_y, ks):
 
     plt.clf()
 
-    title = 'C* to degree # of SVs: -w1 16'
+    title = 'C* to degree # of SVs'
     plt.title(title)
     plt.xlabel("# of SVs", fontsize=20)
     plt.ylabel("acc", fontsize=20)
     plt.plot(xcoordinate, nr_sv_mean, '-o')
+    plt.plot(xcoordinate, nr_msv_mean, '-o')
     plt.savefig(title, bbox_inches='tight')
 
 def false_positive_error_plot(cv_tenfold_x, cv_tenfold_y):
 
-    for ck in range(1, 4):
-        w = 2**ck
-        for degree in range(1,5):
+    xcoordinate = [k for k in range(-10, 11)]
+
+    for degree in range(1, 5):
+
+        mean_vecs = []
+        std_vecs = []
+        for ck in [0, 2, 4, 8, 16]:
+            w = ck
             mean_vec = []
             std_vec = []
             for k in range(-10, 11):
@@ -190,7 +206,7 @@ def false_positive_error_plot(cv_tenfold_x, cv_tenfold_y):
                 acc = []
                 for fold in range(10):
 
-                    print(degree, k, fold)
+                    print(degree, ck, k, fold)
                     trn_x, vld_x = get_trn_vld_data(cv_tenfold_x, fold)
                     trn_y, vld_y = get_trn_vld_data(cv_tenfold_y, fold)
 
@@ -203,13 +219,22 @@ def false_positive_error_plot(cv_tenfold_x, cv_tenfold_y):
                 mean_vec.append(np.mean(acc_arr))
                 std_vec.append(np.std(acc_arr))
 
-            title = f'degree: {degree} -w1 {ck}'
-            plt.title(title)
-            plt.xlabel("k", fontsize=20)
-            plt.ylabel("acc", fontsize=20)
-            plt.errorbar(xcoordinate, mean_vec, yerr=std_vec,fmt='o',capthick=2)
-            plt.plot(xcoordinate, mean_vec)
-            plt.savefig(title, bbox_inches='tight')
+            mean_vecs.append(mean_vec)
+            std_vecs.append(std_vec)
+
+        title = f'degree: {degree} -wi ver.'
+        plt.title(title)
+        plt.xlabel("k", fontsize=20)
+        plt.ylabel("acc", fontsize=20)
+        lg = []
+        for i in range(len(mean_vecs)):
+            plt.errorbar(xcoordinate, mean_vecs[i], yerr=std_vecs[i],fmt='o',capthick=2)
+            ll = plt.plot(xcoordinate, mean_vecs[i])
+            lg.append(ll)
+        plt.legend(handles=[ll for ll in lg], labels = ['k=0', 'k=2', 'k=4', 'k=8', 'k=16'], loc='best')
+        plt.savefig(title, bbox_inches='tight')
+
+        plt.clf()
 
 def main():
 
@@ -243,10 +268,10 @@ def main():
         count += 1
 
     # training for each degree and C
-    ks = train_for_each_dC_pair(cv_tenfold_x, cv_tenfold_y)-10
+    #ks = train_for_each_dC_pair(cv_tenfold_x, cv_tenfold_y)-10
 
     # fix C* and plot for every degree
-    fix_C_plot(cv_tenfold_x, cv_tenfold_y, ks)
+    #fix_C_plot(cv_tenfold_x, cv_tenfold_y, xt, yt, ks)
 
     # penalize false positive error more
     false_positive_error_plot(cv_tenfold_x, cv_tenfold_y)
