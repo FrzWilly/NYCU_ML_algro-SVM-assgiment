@@ -191,6 +191,7 @@ def fix_C_plot(cv_tenfold_x, cv_tenfold_y, xt, yt, ks):
 def false_positive_error_plot(cv_tenfold_x, cv_tenfold_y):
 
     xcoordinate = [k for k in range(-10, 11)]
+    xsimp = [k for k in range(-10, -5)]
 
     for degree in range(1, 5):
 
@@ -229,9 +230,9 @@ def false_positive_error_plot(cv_tenfold_x, cv_tenfold_y):
         lg = []
         for i in range(len(mean_vecs)):
             plt.errorbar(xcoordinate, mean_vecs[i], yerr=std_vecs[i],fmt='o',capthick=2)
-            ll = plt.plot(xcoordinate, mean_vecs[i])
+            ll, = plt.plot(xcoordinate, mean_vecs[i], label=f'line {i}')
             lg.append(ll)
-        plt.legend(handles=[ll for ll in lg], labels = ['k=0', 'k=2', 'k=4', 'k=8', 'k=16'], loc='best')
+        plt.legend(handles=lg, labels = ['k=0', 'k=2', 'k=4', 'k=8', 'k=16'])
         plt.savefig(title, bbox_inches='tight')
 
         plt.clf()
