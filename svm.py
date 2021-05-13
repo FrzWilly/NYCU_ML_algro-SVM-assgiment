@@ -19,7 +19,7 @@ def get_trn_vld_data(lst, fold):
 
     return trn, vld
 
-def preprocess_data(x, y, method = "B"):
+def preprocess_data(x, y, method = "A"):
 
     ################ preprocess y #############################
     for i in range(len(y)):
@@ -225,7 +225,7 @@ def false_positive_error_plot(cv_tenfold_x, cv_tenfold_y):
 
         title = f'degree: {degree} -wi ver.'
         plt.title(title)
-        plt.xlabel("k", fontsize=20)
+        plt.xlabel("log(C)", fontsize=20)
         plt.ylabel("acc", fontsize=20)
         lg = []
         for i in range(len(mean_vecs)):
