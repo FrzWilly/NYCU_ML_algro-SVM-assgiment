@@ -19,7 +19,7 @@ def get_trn_vld_data(lst, fold):
 
     return trn, vld
 
-def preprocess_data(x, y, method = "B"):
+def preprocess_data(x, y, method = "A"):
 
     ################ preprocess y #############################
     for i in range(len(y)):
