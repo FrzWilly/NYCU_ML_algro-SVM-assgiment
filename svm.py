@@ -197,7 +197,7 @@ def false_positive_error_plot(cv_tenfold_x, cv_tenfold_y):
 
         mean_vecs = []
         std_vecs = []
-        for ck in [0, 2, 4, 8, 16]:
+        for ck in [1, 2, 4, 8, 16]:
             w = ck
             mean_vec = []
             std_vec = []
@@ -225,14 +225,14 @@ def false_positive_error_plot(cv_tenfold_x, cv_tenfold_y):
 
         title = f'degree: {degree} -wi ver.'
         plt.title(title)
-        plt.xlabel("k", fontsize=20)
+        plt.xlabel("log(C)", fontsize=20)
         plt.ylabel("acc", fontsize=20)
         lg = []
         for i in range(len(mean_vecs)):
             plt.errorbar(xcoordinate, mean_vecs[i], yerr=std_vecs[i],fmt='o',capthick=2)
             ll, = plt.plot(xcoordinate, mean_vecs[i], label=f'line {i}')
             lg.append(ll)
-        plt.legend(handles=lg, labels = ['k=0', 'k=2', 'k=4', 'k=8', 'k=16'])
+        plt.legend(handles=lg, labels = ['k=1', 'k=2', 'k=4', 'k=8', 'k=16'])
         plt.savefig(title, bbox_inches='tight')
 
         plt.clf()
